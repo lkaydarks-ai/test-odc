@@ -6,7 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'webview_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,7 +90,6 @@ class OdcCampusApp extends StatelessWidget {
           primary: AppColors.orange,
           surface: AppColors.surface,
         ),
-        textTheme: GoogleFonts.montserratTextTheme(ThemeData.dark().textTheme),
       ),
       home: const HomePage(),
     );
@@ -125,16 +124,14 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _ouvrirService(ServiceModel service) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WebViewPage(
-          url: service.url,
-          title: service.name,
-          themeColor: service.color,
-        ),
-      ),
-    );
+  Future<void> _ouvrirService(ServiceModel service) async {
+    final uri = Uri.parse(service.url);
+    if (!await launchUrl(uri, webOnlyWindowName: '_blank')) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Impossible d'ouvrir ${service.name}")),
+      );
+    }
   }
 
   @override
@@ -183,11 +180,11 @@ class _HomePageState extends State<HomePage> {
                           itemCount: services.length,
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1,
-                          ),
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 1,
+                              ),
                           itemBuilder: (context, index) {
                             final service = services[index];
                             return _ServiceCard(
@@ -237,7 +234,10 @@ class _EnTete extends StatelessWidget {
                   letterSpacing: 0.5,
                 ),
                 children: const [
-                  TextSpan(text: 'ODC ', style: TextStyle(color: Colors.white)),
+                  TextSpan(
+                    text: 'ODC ',
+                    style: TextStyle(color: Colors.white),
+                  ),
                   TextSpan(
                     text: 'Campus',
                     style: TextStyle(color: AppColors.orange),

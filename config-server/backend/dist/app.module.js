@@ -10,6 +10,7 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const configurations_module_1 = require("./configurations/configurations.module");
+const uploads_module_1 = require("./uploads/uploads.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -18,6 +19,7 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             mongoose_1.MongooseModule.forRoot('mongodb://127.0.0.1:27017/config-server'),
             configurations_module_1.ConfigurationsModule,
+            uploads_module_1.UploadsModule,
         ],
     })
 ], AppModule);
