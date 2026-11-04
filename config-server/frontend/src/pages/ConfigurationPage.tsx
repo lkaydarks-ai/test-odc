@@ -95,6 +95,12 @@ export default function ConfigurationPage() {
   const [editJson, setEditJson] = useState('');
   const [editStatus, setEditStatus] = useState<ConfigStatus>('active');
   const [deleteTarget, setDeleteTarget] = useState<Configuration | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+  const [uploadMessage, setUploadMessage] = useState<{
+    text: string;
+    severity: 'success' | 'error';
+  } | null>(null);
 
   const loadConfigurations = useCallback(async () => {
     try {
@@ -218,6 +224,55 @@ export default function ConfigurationPage() {
       setNotification({ message: extractError(error), severity: 'error' });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!selectedImage) {
+      setUploadMessage({
+        text: 'Choisissez une image avant de lancer l’upload.',
+        severity: 'error',
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedImage);
+
+    try {
+      setUploadMessage(null);
+      const response = await fetch('http://localhost:3000/uploads', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Le serveur a répondu avec le code ${response.status}.`);
+      }
+
+      const result: unknown = await response.json();
+      if (
+        typeof result !== 'object' ||
+        result === null ||
+        !('url' in result) ||
+        typeof result.url !== 'string'
+      ) {
+        throw new Error('Le serveur n’a pas renvoyé l’adresse de l’image.');
+      }
+
+      setUploadedImageUrl(result.url);
+      setUploadMessage({
+        text: 'Image uploadée avec succès.',
+        severity: 'success',
+      });
+    } catch (error) {
+      setUploadMessage({
+        text:
+          error instanceof Error
+            ? error.message
+            : 'Impossible d’uploader l’image.',
+        severity: 'error',
+      });
     }
   };
 
@@ -428,6 +483,89 @@ export default function ConfigurationPage() {
               </Table>
             </TableContainer>
           )}
+        </Paper>
+
+        <Paper
+          component="section"
+          variant="outlined"
+          sx={{
+            mt: 3,
+            p: { xs: 2, sm: 3 },
+            color: '#fff',
+            bgcolor: '#161616',
+            borderColor: '#333',
+          }}
+        >
+          {/* Cette section permet de choisir et d’envoyer une image au serveur. */}
+          <Stack spacing={2.5}>
+            <Box>
+              {/* Le titre indique clairement à quoi sert cette partie. */}
+              <Typography component="h2" variant="h6" fontWeight={600}>
+                Trombinoscope
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'grey.400' }}>
+                Téléversez une image pour l’ajouter à l’espace ODC Campus.
+              </Typography>
+            </Box>
+
+            {/* Le bouton natif ouvre le choix du fichier sur l’appareil. */}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                setSelectedImage(event.target.files?.[0] ?? null);
+                setUploadMessage(null);
+              }}
+              style={{ color: '#fff' }}
+            />
+
+            {/* Ce bouton crée une requête FormData et envoie la photo au backend. */}
+            <Box>
+              <Button
+                type="button"
+                variant="contained"
+                onClick={() => void handleImageUpload()}
+                sx={{
+                  bgcolor: '#FF7900',
+                  '&:hover': { bgcolor: '#e56d00' },
+                  minHeight: 44,
+                }}
+              >
+                Uploader l’image
+              </Button>
+            </Box>
+
+            {/* Ce texte affiche un résultat vert ou rouge après l’upload. */}
+            {uploadMessage && (
+              <Typography
+                color={
+                  uploadMessage.severity === 'success'
+                    ? 'success.main'
+                    : 'error.main'
+                }
+                fontWeight={600}
+              >
+                {uploadMessage.text}
+              </Typography>
+            )}
+
+            {/* Quand le serveur donne une URL, cette image montre le fichier reçu. */}
+            {uploadedImageUrl && (
+              <Box
+                component="img"
+                src={uploadedImageUrl}
+                alt="Image uploadée"
+                sx={{
+                  width: '100%',
+                  maxWidth: 360,
+                  maxHeight: 360,
+                  objectFit: 'cover',
+                  borderRadius: 2,
+                  border: '2px solid #FF7900',
+                }}
+              />
+            )}
+          </Stack>
         </Paper>
       </Box>
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'services_api.dart';
 import 'webview_page.dart';
 
 void main() {
@@ -32,50 +33,6 @@ class ServiceModel {
     required this.url,
   });
 }
-
-/// Données factices utilisées par le prototype de la page d'accueil.
-const List<ServiceModel> servicesMock = [
-  ServiceModel(
-    name: 'Tâches',
-    icon: Icons.checklist_rounded,
-    url: 'https://flutter.dev',
-  ),
-  ServiceModel(
-    name: 'Profil',
-    icon: Icons.person_rounded,
-    url: 'https://flutter.dev',
-  ),
-  ServiceModel(
-    name: 'Notifications',
-    icon: Icons.notifications_rounded,
-    url: 'https://flutter.dev',
-  ),
-  ServiceModel(
-    name: 'Présences',
-    icon: Icons.how_to_reg_rounded,
-    url: 'https://flutter.dev',
-  ),
-  ServiceModel(
-    name: 'Cohortes',
-    icon: Icons.groups_rounded,
-    url: 'https://flutter.dev',
-  ),
-  ServiceModel(
-    name: 'Certifs',
-    icon: Icons.workspace_premium_rounded,
-    url: 'https://flutter.dev',
-  ),
-  ServiceModel(
-    name: 'Forum',
-    icon: Icons.forum_rounded,
-    url: 'https://flutter.dev',
-  ),
-  ServiceModel(
-    name: 'Paramètres',
-    icon: Icons.settings_rounded,
-    url: 'https://flutter.dev',
-  ),
-];
 
 class OdcCampusApp extends StatelessWidget {
   const OdcCampusApp({super.key});
@@ -217,17 +174,63 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _rechercheController = TextEditingController();
   String _recherche = '';
+  late final Future<List<ServiceModel>> _servicesFuture;
 
-  List<ServiceModel> get _servicesFiltres {
+  @override
+  void initState() {
+    super.initState();
+    _servicesFuture = _chargerServices();
+  }
+
+  Future<List<ServiceModel>> _chargerServices() async {
+    final services = await ServicesApi().fetchServices();
+
+    return services.map((service) {
+      final data = Map<String, dynamic>.from(service as Map);
+      return ServiceModel(
+        name: data['name'] as String,
+        icon: _iconePourService(data['name'] as String),
+        url: data['url'] as String,
+      );
+    }).toList();
+  }
+
+  IconData _iconePourService(String nom) {
+    switch (nom.toLowerCase()) {
+      case 'tâches':
+      case 'taches':
+        return Icons.checklist_rounded;
+      case 'profil':
+        return Icons.person_rounded;
+      case 'notifications':
+        return Icons.notifications_rounded;
+      case 'présences':
+      case 'presences':
+        return Icons.how_to_reg_rounded;
+      case 'cohortes':
+        return Icons.groups_rounded;
+      case 'certifs':
+        return Icons.workspace_premium_rounded;
+      case 'forum':
+        return Icons.forum_rounded;
+      case 'paramètres':
+      case 'parametres':
+        return Icons.settings_rounded;
+      default:
+        return Icons.apps_rounded;
+    }
+  }
+
+  List<ServiceModel> _servicesFiltres(List<ServiceModel> services) {
     final texteRecherche = _recherche.trim().toLowerCase();
 
     // Sans texte saisi, toutes les cartes restent visibles.
     if (texteRecherche.isEmpty) {
-      return servicesMock;
+      return services;
     }
 
     // Chaque frappe compare le texte saisi avec le nom du service.
-    return servicesMock.where((service) {
+    return services.where((service) {
       return service.name.toLowerCase().contains(texteRecherche);
     }).toList();
   }
@@ -311,28 +314,54 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                    if (_servicesFiltres.isEmpty)
-                      const SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _AucunResultat(),
-                      )
-                    else
-                      SliverGrid(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final service = _servicesFiltres[index];
-                          return _ServiceCard(
-                            service: service,
-                            onTap: () => _ouvrirService(service),
+                    SliverToBoxAdapter(
+                      child: FutureBuilder<List<ServiceModel>>(
+                        future: _servicesFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SizedBox(
+                              height: 160,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.orange,
+                                ),
+                              ),
+                            );
+                          }
+
+                          final services = _servicesFiltres(
+                            snapshot.data ?? const [],
                           );
-                        }, childCount: _servicesFiltres.length),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              mainAxisSpacing: 10,
-                              crossAxisSpacing: 10,
-                              childAspectRatio: 0.8,
-                            ),
+                          if (services.isEmpty) {
+                            return const SizedBox(
+                              height: 160,
+                              child: _AucunResultat(),
+                            );
+                          }
+
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: services.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 4,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 10,
+                                  childAspectRatio: 0.8,
+                                ),
+                            itemBuilder: (context, index) {
+                              final service = services[index];
+                              return _ServiceCard(
+                                service: service,
+                                onTap: () => _ouvrirService(service),
+                              );
+                            },
+                          );
+                        },
                       ),
+                    ),
                     const SliverToBoxAdapter(child: SizedBox(height: 20)),
                   ],
                 ),
