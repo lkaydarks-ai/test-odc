@@ -96,7 +96,113 @@ class OdcCampusApp extends StatelessWidget {
         ),
         fontFamily: GoogleFonts.montserrat().fontFamily,
       ),
-      home: const HomePage(),
+      home: const MainNavigation(),
+    );
+  }
+}
+
+class MainNavigation extends StatefulWidget {
+  const MainNavigation({super.key});
+
+  @override
+  State<MainNavigation> createState() => _MainNavigationState();
+}
+
+class _MainNavigationState extends State<MainNavigation> {
+  int _currentIndex = 0;
+
+  final List<Widget> _pages = const [HomePage(), TachesPage(), ProfilPage()];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.orange,
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: GoogleFonts.montserrat(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: GoogleFonts.montserrat(fontSize: 12),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_rounded),
+            label: 'Accueil',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_rounded),
+            label: 'Tâches',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TachesPage extends StatelessWidget {
+  const TachesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: AppColors.noir,
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.assignment_rounded, color: AppColors.orange, size: 48),
+            SizedBox(height: 16),
+            Text(
+              'Mes Tâches',
+              style: TextStyle(
+                color: AppColors.blanc,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProfilPage extends StatelessWidget {
+  const ProfilPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: AppColors.noir,
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_rounded, color: AppColors.orange, size: 48),
+            SizedBox(height: 16),
+            Text(
+              'Mon Profil',
+              style: TextStyle(
+                color: AppColors.blanc,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -111,7 +217,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _rechercheController = TextEditingController();
   String _recherche = '';
-  int _ongletActif = 0;
 
   List<ServiceModel> get _servicesFiltres {
     final texteRecherche = _recherche.trim().toLowerCase();
@@ -148,121 +253,92 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [AppColors.noir, AppColors.grisTresFonce],
-          ),
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.noir, AppColors.grisTresFonce],
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: CustomScrollView(
-                    slivers: [
-                      const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                      const SliverToBoxAdapter(child: _EnTete()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 18)),
-                      const SliverToBoxAdapter(child: _BanniereDevOps()),
-                      const SliverToBoxAdapter(child: SizedBox(height: 18)),
-                      SliverToBoxAdapter(
-                        child: _BarreRecherche(
-                          controller: _rechercheController,
-                          onChanged: (texte) {
-                            setState(() => _recherche = texte);
-                          },
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: CustomScrollView(
+                  slivers: [
+                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                    const SliverToBoxAdapter(child: _EnTete()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
+                    const SliverToBoxAdapter(child: _BanniereDevOps()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
+                    SliverToBoxAdapter(
+                      child: _BarreRecherche(
+                        controller: _rechercheController,
+                        onChanged: (texte) {
+                          setState(() => _recherche = texte);
+                        },
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                    SliverToBoxAdapter(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: SizedBox(
+                          height: 160,
+                          width: double.infinity,
+                          child: Image.asset(
+                            'assets/images/banner_student.png',
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                      SliverToBoxAdapter(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: SizedBox(
-                            height: 160,
-                            width: double.infinity,
-                            child: Image.asset(
-                              'assets/images/banner_student.png',
-                              fit: BoxFit.cover,
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 22)),
+                    SliverToBoxAdapter(
+                      child: Text(
+                        'Services',
+                        style: GoogleFonts.montserrat(
+                          color: AppColors.blanc,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    if (_servicesFiltres.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _AucunResultat(),
+                      )
+                    else
+                      SliverGrid(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final service = _servicesFiltres[index];
+                          return _ServiceCard(
+                            service: service,
+                            onTap: () => _ouvrirService(service),
+                          );
+                        }, childCount: _servicesFiltres.length),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              childAspectRatio: 0.8,
                             ),
-                          ),
-                        ),
                       ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                      const SliverToBoxAdapter(child: SizedBox(height: 22)),
-                      SliverToBoxAdapter(
-                        child: Text(
-                          'Services',
-                          style: GoogleFonts.montserrat(
-                            color: AppColors.blanc,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                      if (_servicesFiltres.isEmpty)
-                        const SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: _AucunResultat(),
-                        )
-                      else
-                        SliverGrid(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final service = _servicesFiltres[index];
-                            return _ServiceCard(
-                              service: service,
-                              onTap: () => _ouvrirService(service),
-                            );
-                          }, childCount: _servicesFiltres.length),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                mainAxisSpacing: 10,
-                                crossAxisSpacing: 10,
-                                childAspectRatio: 0.8,
-                              ),
-                        ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                    ],
-                  ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  ],
                 ),
               ),
-              BottomNavigationBar(
-                currentIndex: _ongletActif,
-                onTap: (index) => setState(() => _ongletActif = index),
-                backgroundColor: AppColors.surface,
-                selectedItemColor: AppColors.orange,
-                unselectedItemColor: Colors.grey,
-                selectedLabelStyle: GoogleFonts.montserrat(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelStyle: GoogleFonts.montserrat(fontSize: 12),
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home_rounded),
-                    label: 'Accueil',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.assignment_rounded),
-                    label: 'Tâches',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.person_rounded),
-                    label: 'Profil',
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
