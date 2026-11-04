@@ -178,6 +178,21 @@ class _HomePageState extends State<HomePage> {
                           },
                         ),
                       ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                      SliverToBoxAdapter(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: SizedBox(
+                            height: 160,
+                            width: double.infinity,
+                            child: Image.asset(
+                              'assets/images/banner_student.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
                       const SliverToBoxAdapter(child: SizedBox(height: 22)),
                       SliverToBoxAdapter(
                         child: Text(
@@ -298,48 +313,67 @@ class _BanniereDevOps extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF252525), Color(0xFF171717)],
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.orange, width: 0.8),
-      ),
-      child: Row(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Stack(
         children: [
-          Expanded(
-            child: Text(
-              'Rejoignez la Promo DevOps',
-              maxLines: 2,
-              style: GoogleFonts.montserrat(
-                color: AppColors.blanc,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/banner_odc.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Colors.transparent, Colors.black87],
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.orange,
-              foregroundColor: AppColors.blanc,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(7),
-              ),
-            ),
-            child: Text(
-              'Cliquez ici',
-              style: GoogleFonts.montserrat(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Rejoignez la Promo DevOps',
+                    maxLines: 2,
+                    style: GoogleFonts.montserrat(
+                      color: AppColors.blanc,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.orange,
+                    foregroundColor: AppColors.blanc,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                  child: Text(
+                    'Cliquez ici',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -414,16 +448,20 @@ class _ServiceCard extends StatelessWidget {
               Expanded(
                 child: Align(
                   alignment: Alignment.topCenter,
-                  child: Text(
-                    service.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.montserrat(
-                      color: AppColors.blanc,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      height: 1.15,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.topCenter,
+                    child: Text(
+                      service.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.blanc,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        height: 1.15,
+                      ),
                     ),
                   ),
                 ),
