@@ -1,104 +1,106 @@
-// ============================================================================
-//  ODC Campus — Super App (prototype UI)
-//  Fichier : lib/main.dart
-// ============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
+
+import 'webview_page.dart';
 
 void main() {
+  // Cette configuration garde les icones de la barre Android visibles sur fond sombre.
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   runApp(const OdcCampusApp());
 }
 
-// ----------------------------------------------------------------------------
-//  PALETTE DE COULEURS
-// ----------------------------------------------------------------------------
+/// Regroupe toutes les couleurs importantes afin de conserver un style uniforme.
 class AppColors {
   static const Color noir = Color(0xFF000000);
   static const Color grisTresFonce = Color(0xFF161616);
   static const Color surface = Color(0xFF1E1E1E);
   static const Color orange = Color(0xFFFF7900);
-  static const Color orangeLueur = Color(0x26FF7900);
-  static const Color orangeClic = Color(0x33FF7900);
-  static const Color orangeFond = Color(0x1AFF7900);
-  static const Color enLigne = Color(0xFF2ECC71);
-  static const Color texteSecondaire = Color(0xFF9E9E9E);
+  static const Color blanc = Color(0xFFFFFFFF);
 }
 
-// ----------------------------------------------------------------------------
-//  MODÈLE DE DONNÉES
-// ----------------------------------------------------------------------------
+/// Décrit les informations nécessaires pour afficher un service de l'application.
 class ServiceModel {
   final String name;
   final IconData icon;
   final String url;
-  final Color color;
 
   const ServiceModel({
     required this.name,
     required this.icon,
     required this.url,
-    this.color = AppColors.orange,
   });
 }
 
-// ----------------------------------------------------------------------------
-//  DONNÉES DE TEST (MOCK) - URLs RÉELLES POUR LA DÉMO
-// ----------------------------------------------------------------------------
+/// Données factices utilisées par le prototype de la page d'accueil.
 const List<ServiceModel> servicesMock = [
   ServiceModel(
     name: 'Tâches',
     icon: Icons.checklist_rounded,
-    url: 'https://flutter.dev', // Site officiel Flutter
+    url: 'https://flutter.dev',
   ),
   ServiceModel(
     name: 'Profil',
     icon: Icons.person_rounded,
-    url: 'https://pub.dev', // Site officiel des packages Dart
+    url: 'https://flutter.dev',
   ),
   ServiceModel(
     name: 'Notifications',
     icon: Icons.notifications_rounded,
-    url: 'https://www.orange.ci', // Site officiel Orange Côte d'Ivoire
+    url: 'https://flutter.dev',
   ),
   ServiceModel(
     name: 'Présences',
     icon: Icons.how_to_reg_rounded,
-    url: 'https://dart.dev', // Site officiel Dart
+    url: 'https://flutter.dev',
+  ),
+  ServiceModel(
+    name: 'Cohortes',
+    icon: Icons.groups_rounded,
+    url: 'https://flutter.dev',
+  ),
+  ServiceModel(
+    name: 'Certifs',
+    icon: Icons.workspace_premium_rounded,
+    url: 'https://flutter.dev',
+  ),
+  ServiceModel(
+    name: 'Forum',
+    icon: Icons.forum_rounded,
+    url: 'https://flutter.dev',
+  ),
+  ServiceModel(
+    name: 'Paramètres',
+    icon: Icons.settings_rounded,
+    url: 'https://flutter.dev',
   ),
 ];
 
-// ----------------------------------------------------------------------------
-//  APPLICATION RACINE
-// ----------------------------------------------------------------------------
 class OdcCampusApp extends StatelessWidget {
   const OdcCampusApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final baseTheme = ThemeData.dark();
+
     return MaterialApp(
       title: 'ODC Campus',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.noir,
-        colorScheme: const ColorScheme.dark(
+        colorScheme: baseTheme.colorScheme.copyWith(
           primary: AppColors.orange,
           surface: AppColors.surface,
         ),
+        fontFamily: GoogleFonts.montserrat().fontFamily,
       ),
       home: const HomePage(),
     );
   }
 }
 
-// ----------------------------------------------------------------------------
-//  PAGE D'ACCUEIL
-// ----------------------------------------------------------------------------
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -109,39 +111,45 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _rechercheController = TextEditingController();
   String _recherche = '';
+  int _ongletActif = 0;
 
   List<ServiceModel> get _servicesFiltres {
-    final texte = _recherche.trim().toLowerCase();
-    if (texte.isEmpty) return servicesMock;
-    return servicesMock
-        .where((service) => service.name.toLowerCase().contains(texte))
-        .toList();
+    final texteRecherche = _recherche.trim().toLowerCase();
+
+    // Sans texte saisi, toutes les cartes restent visibles.
+    if (texteRecherche.isEmpty) {
+      return servicesMock;
+    }
+
+    // Chaque frappe compare le texte saisi avec le nom du service.
+    return servicesMock.where((service) {
+      return service.name.toLowerCase().contains(texteRecherche);
+    }).toList();
   }
 
   @override
   void dispose() {
+    // Le contrôleur doit être libéré pour éviter une fuite de mémoire.
     _rechercheController.dispose();
     super.dispose();
   }
 
-  Future<void> _ouvrirService(ServiceModel service) async {
-    final uri = Uri.parse(service.url);
-    if (!await launchUrl(uri, webOnlyWindowName: '_blank')) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Impossible d'ouvrir ${service.name}")),
-      );
-    }
+  void _ouvrirService(ServiceModel service) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WebViewPage(
+          url: service.url,
+          title: service.name,
+          themeColor: AppColors.orange,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final services = _servicesFiltres;
-
     return Scaffold(
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -150,52 +158,95 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                const _EnTete(),
-                const SizedBox(height: 24),
-                _BarreRecherche(
-                  controller: _rechercheController,
-                  onChanged: (texte) => setState(() => _recherche = texte),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Mes services',
-                  style: GoogleFonts.montserrat(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.texteSecondaire,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: services.isEmpty
-                      ? const _AucunResultat()
-                      : GridView.builder(
-                          padding: const EdgeInsets.only(bottom: 24, top: 8),
-                          itemCount: services.length,
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 1,
-                              ),
-                          itemBuilder: (context, index) {
-                            final service = services[index];
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: CustomScrollView(
+                    slivers: [
+                      const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                      const SliverToBoxAdapter(child: _EnTete()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 18)),
+                      const SliverToBoxAdapter(child: _BanniereDevOps()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 18)),
+                      SliverToBoxAdapter(
+                        child: _BarreRecherche(
+                          controller: _rechercheController,
+                          onChanged: (texte) {
+                            setState(() => _recherche = texte);
+                          },
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 22)),
+                      SliverToBoxAdapter(
+                        child: Text(
+                          'Services',
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.blanc,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                      if (_servicesFiltres.isEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _AucunResultat(),
+                        )
+                      else
+                        SliverGrid(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final service = _servicesFiltres[index];
                             return _ServiceCard(
                               service: service,
                               onTap: () => _ouvrirService(service),
                             );
-                          },
+                          }, childCount: _servicesFiltres.length),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: 0.8,
+                              ),
                         ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+              BottomNavigationBar(
+                currentIndex: _ongletActif,
+                onTap: (index) => setState(() => _ongletActif = index),
+                backgroundColor: AppColors.surface,
+                selectedItemColor: AppColors.orange,
+                unselectedItemColor: Colors.grey,
+                selectedLabelStyle: GoogleFonts.montserrat(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: GoogleFonts.montserrat(fontSize: 12),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_rounded),
+                    label: 'Accueil',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.assignment_rounded),
+                    label: 'Tâches',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_rounded),
+                    label: 'Profil',
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -203,99 +254,100 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// ----------------------------------------------------------------------------
-//  EN-TÊTE
-// ----------------------------------------------------------------------------
 class _EnTete extends StatelessWidget {
   const _EnTete();
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Bienvenue sur',
-              style: GoogleFonts.montserrat(
-                fontSize: 13,
-                color: AppColors.texteSecondaire,
-              ),
+        Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.orange,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            'ODC',
+            style: GoogleFonts.montserrat(
+              color: AppColors.blanc,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 2),
-            Text.rich(
-              TextSpan(
-                style: GoogleFonts.montserrat(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                ),
-                children: const [
-                  TextSpan(
-                    text: 'ODC ',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  TextSpan(
-                    text: 'Campus',
-                    style: TextStyle(color: AppColors.orange),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-        const _AvatarUtilisateur(),
+        const Spacer(),
+        const Icon(Icons.search_rounded, color: AppColors.blanc),
+        const SizedBox(width: 16),
+        const Icon(Icons.notifications_none_rounded, color: AppColors.blanc),
+        const SizedBox(width: 16),
+        const CircleAvatar(
+          radius: 18,
+          backgroundColor: AppColors.surface,
+          child: Icon(Icons.person_rounded, color: AppColors.blanc, size: 22),
+        ),
       ],
     );
   }
 }
 
-// ----------------------------------------------------------------------------
-//  AVATAR
-// ----------------------------------------------------------------------------
-class _AvatarUtilisateur extends StatelessWidget {
-  const _AvatarUtilisateur();
+class _BanniereDevOps extends StatelessWidget {
+  const _BanniereDevOps();
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.orange, width: 2),
-          ),
-          child: const CircleAvatar(
-            radius: 24,
-            backgroundColor: AppColors.surface,
-            child: Icon(Icons.person_rounded, color: Colors.white70, size: 28),
-          ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF252525), Color(0xFF171717)],
         ),
-        Positioned(
-          right: 2,
-          bottom: 2,
-          child: Container(
-            width: 14,
-            height: 14,
-            decoration: BoxDecoration(
-              color: AppColors.enLigne,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.noir, width: 2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.orange, width: 0.8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Rejoignez la Promo DevOps',
+              maxLines: 2,
+              style: GoogleFonts.montserrat(
+                color: AppColors.blanc,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          ElevatedButton(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.orange,
+              foregroundColor: AppColors.blanc,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(7),
+              ),
+            ),
+            child: Text(
+              'Cliquez ici',
+              style: GoogleFonts.montserrat(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-// ----------------------------------------------------------------------------
-//  BARRE DE RECHERCHE
-// ----------------------------------------------------------------------------
 class _BarreRecherche extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
@@ -308,23 +360,20 @@ class _BarreRecherche extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       cursorColor: AppColors.orange,
-      style: GoogleFonts.montserrat(color: Colors.white, fontSize: 14),
+      style: GoogleFonts.montserrat(color: AppColors.blanc, fontSize: 13),
       decoration: InputDecoration(
         hintText: 'Rechercher un service...',
-        hintStyle: GoogleFonts.montserrat(
-          color: AppColors.texteSecondaire,
-          fontSize: 14,
-        ),
+        hintStyle: GoogleFonts.montserrat(color: Colors.grey, fontSize: 13),
         prefixIcon: const Icon(Icons.search_rounded, color: AppColors.orange),
         filled: true,
         fillColor: AppColors.surface,
-        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.orange, width: 1),
         ),
       ),
@@ -332,9 +381,6 @@ class _BarreRecherche extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------------------
-//  CARTE D'UN SERVICE
-// ----------------------------------------------------------------------------
 class _ServiceCard extends StatelessWidget {
   final ServiceModel service;
   final VoidCallback onTap;
@@ -343,56 +389,42 @@ class _ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const rayon = BorderRadius.all(Radius.circular(20));
-
-    return Container(
-      decoration: const BoxDecoration(
-        borderRadius: rayon,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.orangeLueur,
-            blurRadius: 20,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Material(
-        color: AppColors.surface,
-        borderRadius: rayon,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          splashColor: AppColors.orangeClic,
-          highlightColor: AppColors.orangeFond,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: AppColors.orange.withValues(alpha: 0.2),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: Center(
-                  child: Container(
-                    width: 68,
-                    height: 68,
-                    decoration: const BoxDecoration(
-                      color: AppColors.orangeFond,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      service.icon,
-                      color: AppColors.orange,
-                      size: 36,
-                    ),
-                  ),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
+                child: Icon(service.icon, color: AppColors.orange, size: 22),
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16, left: 8, right: 8),
-                child: Text(
-                  service.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.montserrat(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+              const SizedBox(height: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Text(
+                    service.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      color: AppColors.blanc,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      height: 1.15,
+                    ),
                   ),
                 ),
               ),
@@ -404,9 +436,6 @@ class _ServiceCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------------------
-//  AUCUN RÉSULTAT
-// ----------------------------------------------------------------------------
 class _AucunResultat extends StatelessWidget {
   const _AucunResultat();
 
@@ -416,18 +445,11 @@ class _AucunResultat extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.search_off_rounded,
-            size: 48,
-            color: AppColors.texteSecondaire,
-          ),
-          const SizedBox(height: 12),
+          const Icon(Icons.search_off_rounded, size: 44, color: Colors.grey),
+          const SizedBox(height: 10),
           Text(
             'Aucun service trouvé',
-            style: GoogleFonts.montserrat(
-              color: AppColors.texteSecondaire,
-              fontSize: 14,
-            ),
+            style: GoogleFonts.montserrat(color: Colors.grey, fontSize: 13),
           ),
         ],
       ),
