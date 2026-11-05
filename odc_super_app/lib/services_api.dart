@@ -26,4 +26,21 @@ class ServicesApi {
       ];
     }
   }
-}
+
+    // Fonction pour récupérer l'URL de l'avatar de l'utilisateur
+  Future<String?> fetchAvatarUrl() async {
+    try {
+      final response = await http.get(Uri.parse('http://localhost:3000/configurations/app.user_avatar'));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // On retourne l'URL contenue dans value.url
+        return data['value']['url'];
+      }
+      return null;
+    } catch (e) {
+      print('Erreur chargement avatar: $e');
+      return null;
+    }
+  }
+} 

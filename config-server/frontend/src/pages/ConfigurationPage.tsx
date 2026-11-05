@@ -41,6 +41,7 @@ import {
   updateConfiguration,
 } from '../api/configuration';
 import type { ConfigStatus, Configuration } from '../types/configurations';
+import '../App.css';
 
 type Notification = {
   message: string;
@@ -97,6 +98,9 @@ export default function ConfigurationPage() {
   const [deleteTarget, setDeleteTarget] = useState<Configuration | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+  const [services, setServices] = useState<{ name: string; url: string }[]>([]);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServiceUrl, setNewServiceUrl] = useState('');
   const [uploadMessage, setUploadMessage] = useState<{
     text: string;
     severity: 'success' | 'error';
@@ -104,7 +108,9 @@ export default function ConfigurationPage() {
 
   const loadConfigurations = useCallback(async () => {
     try {
-      setConfigurations(await getConfigurations());
+      const items = await getConfigurations();
+      setConfigurations(items);
+      synchroniserServices(items);
     } catch (error) {
       setNotification({ message: extractError(error), severity: 'error' });
     } finally {
@@ -112,11 +118,39 @@ export default function ConfigurationPage() {
     }
   }, []);
 
+  const synchroniserServices = (items: Configuration[]) => {
+    const servicesConfiguration = items.find(
+      (configuration) => configuration.key === 'app.services',
+    );
+    const servicesValue = servicesConfiguration?.value.services;
+
+    if (!Array.isArray(servicesValue)) {
+      setServices([]);
+      return;
+    }
+
+    setServices(
+      servicesValue
+        .filter(
+          (service): service is { name: string; url: string } =>
+            typeof service === 'object' &&
+            service !== null &&
+            typeof service.name === 'string' &&
+            typeof service.url === 'string',
+        )
+        .map((service) => ({
+          name: service.name.trim(),
+          url: service.url.trim(),
+        })),
+    );
+  };
+
   useEffect(() => {
     let active = true;
     getConfigurations()
       .then((items) => {
         if (active) setConfigurations(items);
+        if (active) synchroniserServices(items);
       })
       .catch((error: unknown) => {
         if (active) {
@@ -131,6 +165,43 @@ export default function ConfigurationPage() {
       active = false;
     };
   }, []);
+
+  const handleAddService = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const name = newServiceName.trim();
+    const url = newServiceUrl.trim();
+    if (!name || !url) return;
+
+    const nextServices = [...services, { name, url }];
+    setSaving(true);
+    try {
+      const updated = await updateConfiguration('app.services', {
+        value: { services: nextServices },
+      });
+      setServices(
+        (updated.value.services as { name: string; url: string }[] | undefined) ??
+          nextServices,
+      );
+      setConfigurations((items) =>
+        items.map((configuration) =>
+          configuration.key === 'app.services'
+            ? updated
+            : configuration,
+        ),
+      );
+      setNewServiceName('');
+      setNewServiceUrl('');
+      setNotification({
+        message: `Le service « ${name} » a été ajouté.`,
+        severity: 'success',
+      });
+    } catch (error) {
+      setNotification({ message: extractError(error), severity: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -483,6 +554,58 @@ export default function ConfigurationPage() {
               </Table>
             </TableContainer>
           )}
+        </Paper>
+
+        {/* La liste de services est rangée dans des lignes régulières. */}
+        <Paper
+          component="section"
+          variant="outlined"
+          sx={{ p: { xs: 2, sm: 3 }, mt: 3 }}
+          className="services-section"
+        >
+          <Typography component="h2" variant="h6" fontWeight={600}>
+            Services
+          </Typography>
+
+          <Stack component="form" spacing={2} onSubmit={handleAddService} sx={{ mt: 2 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="Nom du service"
+                placeholder="Dev"
+                value={newServiceName}
+                onChange={(event) => setNewServiceName(event.target.value)}
+                required
+                fullWidth
+              />
+              <TextField
+                label="URL"
+                placeholder="https://example.com"
+                value={newServiceUrl}
+                onChange={(event) => setNewServiceUrl(event.target.value)}
+                required
+                fullWidth
+                type="url"
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={saving}
+                sx={{ minWidth: 120, minHeight: 44 }}
+              >
+                Ajouter
+              </Button>
+            </Stack>
+          </Stack>
+
+          {/* Chaque service garde son nom à gauche et son URL à côté. */}
+          <ul className="services-list">
+            {services.map((service, index) => (
+              <li className="service-row" key={`${service.name}-${index}`}>
+                <strong>{service.name}</strong>
+                <span title={service.url}>{service.url}</span>
+              </li>
+            ))}
+          </ul>
         </Paper>
 
         <Paper

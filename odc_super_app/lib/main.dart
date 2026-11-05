@@ -1,3 +1,4 @@
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -267,115 +268,114 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       child: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: CustomScrollView(
-                  slivers: [
-                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                    const SliverToBoxAdapter(child: _EnTete()),
-                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
-                    const SliverToBoxAdapter(child: _BanniereDevOps()),
-                    const SliverToBoxAdapter(child: SizedBox(height: 18)),
-                    SliverToBoxAdapter(
-                      child: _BarreRecherche(
-                        controller: _rechercheController,
-                        onChanged: (texte) {
-                          setState(() => _recherche = texte);
-                        },
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    SliverToBoxAdapter(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: SizedBox(
-                          height: 160,
-                          width: double.infinity,
-                          child: Image.asset(
-                            'assets/images/banner_student.png',
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                    const SliverToBoxAdapter(child: SizedBox(height: 22)),
-                    SliverToBoxAdapter(
-                      child: Text(
-                        'Services',
-                        style: GoogleFonts.montserrat(
-                          color: AppColors.blanc,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                    SliverToBoxAdapter(
-                      child: FutureBuilder<List<ServiceModel>>(
-                        future: _servicesFuture,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const SizedBox(
-                              height: 160,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.orange,
-                                ),
-                              ),
-                            );
-                          }
-
-                          final services = _servicesFiltres(
-                            snapshot.data ?? const [],
-                          );
-                          if (services.isEmpty) {
-                            return const SizedBox(
-                              height: 160,
-                              child: _AucunResultat(),
-                            );
-                          }
-
-                          return GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: services.length,
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 4,
-                                  mainAxisSpacing: 10,
-                                  crossAxisSpacing: 10,
-                                  childAspectRatio: 0.8,
-                                ),
-                            itemBuilder: (context, index) {
-                              final service = services[index];
-                              return _ServiceCard(
-                                service: service,
-                                onTap: () => _ouvrirService(service),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                  ],
+        child: SingleChildScrollView(
+          // Toute la page utilise ce seul défilement, y compris la grille.
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              const SizedBox(height: 14),
+              const _EnTete(),
+              const SizedBox(height: 18),
+              const _BanniereDevOps(),
+              const SizedBox(height: 18),
+              _BarreRecherche(
+                controller: _rechercheController,
+                onChanged: (texte) {
+                  setState(() => _recherche = texte);
+                },
+              ),
+              const SizedBox(height: 24),
+              const _BanniereCarrousel(),
+              const SizedBox(height: 22),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Services',
+                  style: GoogleFonts.montserrat(
+                    color: AppColors.blanc,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              FutureBuilder<List<ServiceModel>>(
+                future: _servicesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 160,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.orange,
+                        ),
+                      ),
+                    );
+                  }
+
+                  final services = _servicesFiltres(snapshot.data ?? const []);
+                  if (services.isEmpty) {
+                    return const SizedBox(height: 160, child: _AucunResultat());
+                  }
+
+                  // shrinkWrap calcule la hauteur réelle.
+                  // NeverScrollableScrollPhysics laisse le défilement au parent.
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: services.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.8,
+                        ),
+                    itemBuilder: (context, index) {
+                      final service = services[index];
+                      return _ServiceCard(
+                        service: service,
+                        onTap: () => _ouvrirService(service),
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _EnTete extends StatelessWidget {
+/// Affiche les actions du header et charge l'avatar utilisateur depuis le serveur.
+class _EnTete extends StatefulWidget {
   const _EnTete();
+
+  @override
+  State<_EnTete> createState() => _EnTeteState();
+}
+
+class _EnTeteState extends State<_EnTete> {
+  String? _avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _chargerAvatar();
+  }
+
+  /// Charge l'adresse de la photo dès l'ouverture de l'écran.
+  Future<void> _chargerAvatar() async {
+    final avatarUrl = await ServicesApi().fetchAvatarUrl();
+    if (!mounted) return;
+
+    setState(() {
+      _avatarUrl = avatarUrl;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -403,10 +403,89 @@ class _EnTete extends StatelessWidget {
         const SizedBox(width: 16),
         const Icon(Icons.notifications_none_rounded, color: AppColors.blanc),
         const SizedBox(width: 16),
-        const CircleAvatar(
+        CircleAvatar(
           radius: 18,
           backgroundColor: AppColors.surface,
-          child: Icon(Icons.person_rounded, color: AppColors.blanc, size: 22),
+          backgroundImage: _avatarUrl == null
+              ? null
+              : NetworkImage(_avatarUrl!),
+          child: _avatarUrl == null
+              ? const Icon(
+                  Icons.person_rounded,
+                  color: AppColors.blanc,
+                  size: 22,
+                )
+              : null,
+        ),
+      ],
+    );
+  }
+}
+
+/// Affiche une bannière qui défile automatiquement et indique la page courante.
+class _BanniereCarrousel extends StatefulWidget {
+  const _BanniereCarrousel();
+
+  @override
+  State<_BanniereCarrousel> createState() => _BanniereCarrouselState();
+}
+
+class _BanniereCarrouselState extends State<_BanniereCarrousel> {
+  static const List<String> _images = [
+    'assets/images/banner_student.jpeg',
+    'assets/images/banner_student_3.jpeg',
+    'assets/images/banner_student_2.jpeg',
+    'assets/images/banner_student_1.jpeg',
+    'assets/images/banner_student_4.jpeg',
+  ];
+
+  int _indexCourant = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: CarouselSlider(
+            options: CarouselOptions(
+              height: 160,
+              viewportFraction: 1,
+              autoPlay: true,
+              // Le slider passe automatiquement à l'image suivante toutes les 3 secondes.
+              autoPlayInterval: const Duration(seconds: 3),
+              onPageChanged: (index, reason) {
+                setState(() => _indexCourant = index);
+              },
+            ),
+            items: _images.map((chemin) {
+              return SizedBox(
+                width: double.infinity,
+                child: Image.asset(chemin, fit: BoxFit.cover),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Ces points représentent les images disponibles et mettent la courante en évidence.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_images.length, (index) {
+            final estSelectionne = index == _indexCourant;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: estSelectionne ? 10 : 7,
+              height: estSelectionne ? 10 : 7,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: estSelectionne
+                    ? AppColors.orange
+                    : AppColors.blanc.withValues(alpha: 0.45),
+              ),
+            );
+          }),
         ),
       ],
     );

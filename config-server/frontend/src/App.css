@@ -182,3 +182,44 @@
     border-right-color: var(--border);
   }
 } */
+
+.services-section .services-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Chaque ligne utilise le nom comme colonne fixe et l'URL comme contenu flexible. */
+.services-section .service-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 180px) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 12px;
+  border-bottom: 1px solid #e0e3e8;
+}
+
+.services-section .service-row:last-child {
+  border-bottom: 0;
+}
+
+.services-section .service-row strong {
+  overflow-wrap: anywhere;
+}
+
+.services-section .service-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: #5f6b7a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .services-section .service-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
