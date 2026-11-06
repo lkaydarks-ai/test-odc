@@ -69,37 +69,353 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [HomePage(), TachesPage(), ProfilPage()];
+  @override
+  Widget build(BuildContext context) {
+    // LayoutBuilder pour détecter la largeur disponible à la racine de l'application
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // BREAKPOINT : 800px
+        // - constraints.maxWidth < 800  -> Mobile (Design Max It avec BottomNavigationBar)
+        // - constraints.maxWidth >= 800 -> Desktop / Web (Design Dashboard avec Sidebar fixe)
+        final bool isDesktop = constraints.maxWidth >= 800;
+
+        final List<Widget> pages = [
+          HomePage(isDesktop: isDesktop),
+          const TachesPage(),
+          const ProfilPage(),
+        ];
+
+        // ====================================================================
+        // DESIGN GRAND ÉCRAN (DESKTOP / WEB >= 800px) : DASHBOARD AVEC SIDEBAR
+        // ====================================================================
+        if (isDesktop) {
+          return Scaffold(
+            backgroundColor: AppColors.noir,
+            body: Row(
+              children: [
+                // 1. Sidebar latérale gauche fixe (largeur 250px)
+                _DesktopSidebar(
+                  currentIndex: _currentIndex,
+                  onDestinationSelected: (index) {
+                    setState(() => _currentIndex = index);
+                  },
+                ),
+                // 2. Zone de contenu principal à droite
+                Expanded(
+                  child: pages[_currentIndex],
+                ),
+              ],
+            ),
+            // La BottomNavigationBar est complètement supprimée sur Desktop
+          );
+        }
+
+        // ====================================================================
+        // DESIGN MOBILE INITIAL (< 800px) : DESIGN MAX IT
+        // ====================================================================
+        return Scaffold(
+          body: pages[_currentIndex],
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            backgroundColor: AppColors.surface,
+            selectedItemColor: AppColors.orange,
+            unselectedItemColor: Colors.grey,
+            selectedLabelStyle: GoogleFonts.montserrat(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+            unselectedLabelStyle: GoogleFonts.montserrat(fontSize: 12),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: 'Accueil',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.assignment_rounded),
+                label: 'Tâches',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_rounded),
+                label: 'Profil',
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Sidebar personnalisée pour grand écran (Web / Desktop)
+class _DesktopSidebar extends StatefulWidget {
+  final int currentIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const _DesktopSidebar({
+    required this.currentIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  State<_DesktopSidebar> createState() => _DesktopSidebarState();
+}
+
+class _DesktopSidebarState extends State<_DesktopSidebar> {
+  String? _avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _chargerAvatar();
+  }
+
+  Future<void> _chargerAvatar() async {
+    final avatar = await ServicesApi().fetchAvatarUrl();
+    if (mounted) {
+      setState(() => _avatarUrl = avatar);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.orange,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: GoogleFonts.montserrat(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+    return Container(
+      width: 250,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(
+          right: BorderSide(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
         ),
-        unselectedLabelStyle: GoogleFonts.montserrat(fontSize: 12),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Accueil',
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Logo ODC en haut de la sidebar
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.orange,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.orange.withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      'ODC',
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.blanc,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ODC CAMPUS',
+                        style: GoogleFonts.montserrat(
+                          color: AppColors.blanc,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      Text(
+                        'Tableau de bord',
+                        style: GoogleFonts.montserrat(
+                          color: AppColors.orange,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              Text(
+                'MENU PRINCIPAL',
+                style: GoogleFonts.montserrat(
+                  color: Colors.grey.shade500,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Liens de navigation : Accueil, Tâches, Profil
+              _SidebarNavItem(
+                icon: Icons.home_rounded,
+                label: 'Accueil',
+                isSelected: widget.currentIndex == 0,
+                onTap: () => widget.onDestinationSelected(0),
+              ),
+              const SizedBox(height: 8),
+              _SidebarNavItem(
+                icon: Icons.assignment_rounded,
+                label: 'Tâches',
+                isSelected: widget.currentIndex == 1,
+                onTap: () => widget.onDestinationSelected(1),
+              ),
+              const SizedBox(height: 8),
+              _SidebarNavItem(
+                icon: Icons.person_rounded,
+                label: 'Profil',
+                isSelected: widget.currentIndex == 2,
+                onTap: () => widget.onDestinationSelected(2),
+              ),
+
+              const Spacer(),
+
+              // Avatar & profil apprenant en bas de la sidebar
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.grisTresFonce,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.06),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.surface,
+                      backgroundImage: _avatarUrl != null
+                          ? NetworkImage(_avatarUrl!)
+                          : null,
+                      child: _avatarUrl == null
+                          ? const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.blanc,
+                              size: 22,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Apprenant ODC',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.montserrat(
+                              color: AppColors.blanc,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                'En ligne',
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_rounded),
-            label: 'Tâches',
+        ),
+      ),
+    );
+  }
+}
+
+/// Tuile de navigation pour la sidebar desktop
+class _SidebarNavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SidebarNavItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.orange.withValues(alpha: 0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.orange.withValues(alpha: 0.3)
+                  : Colors.transparent,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profil',
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? AppColors.orange : Colors.grey.shade400,
+                size: 20,
+              ),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: GoogleFonts.montserrat(
+                  color: isSelected ? AppColors.blanc : Colors.grey.shade400,
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -166,7 +482,8 @@ class ProfilPage extends StatelessWidget {
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final bool isDesktop;
+  const HomePage({super.key, this.isDesktop = false});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -255,8 +572,57 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Construit la GridView des services selon le nombre de colonnes et les espacements souhaités.
+  Widget _buildServicesGrid({
+    required int crossAxisCount,
+    required double childAspectRatio,
+    required double spacing,
+  }) {
+    return FutureBuilder<List<ServiceModel>>(
+      future: _servicesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 160,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: AppColors.orange,
+              ),
+            ),
+          );
+        }
+
+        final services = _servicesFiltres(snapshot.data ?? const []);
+        if (services.isEmpty) {
+          return const SizedBox(height: 160, child: _AucunResultat());
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: services.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemBuilder: (context, index) {
+            final service = services[index];
+            return _ServiceCard(
+              service: service,
+              onTap: () => _ouvrirService(service),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isDesktop = widget.isDesktop;
+
     return Container(
       width: double.infinity,
       height: double.infinity,
@@ -268,83 +634,118 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       child: SafeArea(
-        child: SingleChildScrollView(
-          // Toute la page utilise ce seul défilement, y compris la grille.
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            children: [
-              const SizedBox(height: 14),
-              const _EnTete(),
-              const SizedBox(height: 18),
-              const _BanniereDevOps(),
-              const SizedBox(height: 18),
-              _BarreRecherche(
-                controller: _rechercheController,
-                onChanged: (texte) {
-                  setState(() => _recherche = texte);
-                },
-              ),
-              const SizedBox(height: 24),
-              const _BanniereCarrousel(),
-              const SizedBox(height: 22),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Services',
-                  style: GoogleFonts.montserrat(
-                    color: AppColors.blanc,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+        child: isDesktop
+            // ================================================================
+            // DESIGN DESKTOP / WEB (>= 800px) : DASHBOARD CENTRÉ AVEC GRILLE 6 COLONNES
+            // ================================================================
+            ? Center(
+                child: ConstrainedBox(
+                  // Largeur maximale fixée à 1200px pour éviter tout étirement disgracieux
+                  constraints: const BoxConstraints(maxWidth: 1200),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // En-tête Desktop (sans doublon de logo ni d'avatar qui sont déjà dans la Sidebar)
+                        const _EnTete(isDesktop: true),
+                        const SizedBox(height: 20),
+
+                        // Bannière DevOps
+                        const _BanniereDevOps(),
+                        const SizedBox(height: 20),
+
+                        // Barre de recherche
+                        _BarreRecherche(
+                          controller: _rechercheController,
+                          onChanged: (texte) {
+                            setState(() => _recherche = texte);
+                          },
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Carrousel avec hauteur fixe (200px) et largeur maîtrisée (ne prend pas toute la largeur)
+                        Align(
+                          alignment: Alignment.center,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 850),
+                            child: const _BanniereCarrousel(height: 200),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Services Applicatifs',
+                            style: GoogleFonts.montserrat(
+                              color: AppColors.blanc,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Grille des services en 6 COLONNES sur Desktop
+                        _buildServicesGrid(
+                          crossAxisCount: 6,
+                          childAspectRatio: 1.05,
+                          spacing: 16,
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              FutureBuilder<List<ServiceModel>>(
-                future: _servicesFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 160,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.orange,
+              )
+            // ================================================================
+            // DESIGN MOBILE (< 800px) : DESIGN MAX IT INITIAL AVEC GRILLE 4 COLONNES
+            // ================================================================
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 14),
+                    const _EnTete(isDesktop: false),
+                    const SizedBox(height: 18),
+                    const _BanniereDevOps(),
+                    const SizedBox(height: 18),
+                    _BarreRecherche(
+                      controller: _rechercheController,
+                      onChanged: (texte) {
+                        setState(() => _recherche = texte);
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Carrousel mobile pleine largeur (hauteur standard 160px)
+                    const _BanniereCarrousel(height: 160),
+                    const SizedBox(height: 22),
+
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Services',
+                        style: GoogleFonts.montserrat(
+                          color: AppColors.blanc,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    );
-                  }
+                    ),
+                    const SizedBox(height: 12),
 
-                  final services = _servicesFiltres(snapshot.data ?? const []);
-                  if (services.isEmpty) {
-                    return const SizedBox(height: 160, child: _AucunResultat());
-                  }
-
-                  // shrinkWrap calcule la hauteur réelle.
-                  // NeverScrollableScrollPhysics laisse le défilement au parent.
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: services.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          mainAxisSpacing: 10,
-                          crossAxisSpacing: 10,
-                          childAspectRatio: 0.8,
-                        ),
-                    itemBuilder: (context, index) {
-                      final service = services[index];
-                      return _ServiceCard(
-                        service: service,
-                        onTap: () => _ouvrirService(service),
-                      );
-                    },
-                  );
-                },
+                    // Grille des services en 4 COLONNES sur Mobile
+                    _buildServicesGrid(
+                      crossAxisCount: 4,
+                      childAspectRatio: 0.8,
+                      spacing: 10,
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -352,7 +753,8 @@ class _HomePageState extends State<HomePage> {
 
 /// Affiche les actions du header et charge l'avatar utilisateur depuis le serveur.
 class _EnTete extends StatefulWidget {
-  const _EnTete();
+  final bool isDesktop;
+  const _EnTete({this.isDesktop = false});
 
   @override
   State<_EnTete> createState() => _EnTeteState();
@@ -379,6 +781,56 @@ class _EnTeteState extends State<_EnTete> {
 
   @override
   Widget build(BuildContext context) {
+    // Version Desktop : Le logo et l'avatar sont déjà dans la Sidebar latérale gauche.
+    // On affiche un bandeau de bienvenue avec notifications actives.
+    if (widget.isDesktop) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Bienvenue sur votre espace ODC Campus',
+                style: GoogleFonts.montserrat(
+                  color: AppColors.blanc,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Formations, projets et services disponibles en temps réel',
+                style: GoogleFonts.montserrat(
+                  color: Colors.grey.shade400,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.notifications_none_rounded, color: AppColors.orange, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Notifications actives',
+                  style: GoogleFonts.montserrat(color: AppColors.blanc, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Version Mobile : Logo ODC, recherche, cloche et CircleAvatar
     return Row(
       children: [
         Container(
@@ -424,7 +876,8 @@ class _EnTeteState extends State<_EnTete> {
 
 /// Affiche une bannière qui défile automatiquement et indique la page courante.
 class _BanniereCarrousel extends StatefulWidget {
-  const _BanniereCarrousel();
+  final double height;
+  const _BanniereCarrousel({super.key, this.height = 160});
 
   @override
   State<_BanniereCarrousel> createState() => _BanniereCarrouselState();
@@ -450,7 +903,7 @@ class _BanniereCarrouselState extends State<_BanniereCarrousel> {
           borderRadius: BorderRadius.circular(15),
           child: CarouselSlider(
             options: CarouselOptions(
-              height: 160,
+              height: widget.height,
               viewportFraction: 1,
               autoPlay: true,
               // Le slider passe automatiquement à l'image suivante toutes les 3 secondes.
