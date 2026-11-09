@@ -56,6 +56,7 @@ lerna-debug.log*
 *.swp
 *.swo
 *~
+.history/
 
 # ------------------------------------------------------------------------------
 # 5. NODE.JS & NESTJS (Backend config-server & Frontend)
@@ -68,6 +69,8 @@ build/
 .npm/
 .yarn/
 .pnpm-store/
+config-server/backend/uploads/*
+!config-server/backend/uploads/.gitkeep
 
 # ------------------------------------------------------------------------------
 # 6. REACT & NEXT.JS (odc_backoffice, frontend)

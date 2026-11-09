@@ -9,8 +9,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
 
-// Constantes de configuration de l'API Backend NestJS
-const API_BASE_URL = 'http://localhost:3000';
+// Constantes de configuration de l'API Backend NestJS (surchargeable via variable d'environnement Vite)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const SERVICES_ENDPOINT = `${API_BASE_URL}/configurations/app.services`;
 const UPLOAD_ENDPOINT = `${API_BASE_URL}/uploads`;
 

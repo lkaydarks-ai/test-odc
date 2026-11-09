@@ -28,7 +28,7 @@ let ConfigurationsService = class ConfigurationsService {
         }
         catch (error) {
             if (error?.code === 11000) {
-                throw new common_1.ConflictException(`La clé "${dto.key}" existe déjà`);
+                throw new common_1.ConflictException(`La clé "${dto.key}" existe déjà.`);
             }
             throw error;
         }
@@ -39,7 +39,7 @@ let ConfigurationsService = class ConfigurationsService {
     async findOneByKey(key) {
         const config = await this.configModel.findOne({ key }).lean().exec();
         if (!config) {
-            throw new common_1.NotFoundException(`Configuration "${key}" introuvable`);
+            throw new common_1.NotFoundException(`Configuration avec la clé "${key}" introuvable.`);
         }
         return config;
     }
@@ -49,14 +49,14 @@ let ConfigurationsService = class ConfigurationsService {
             .lean()
             .exec();
         if (!updated) {
-            throw new common_1.NotFoundException(`Configuration "${key}" introuvable`);
+            throw new common_1.NotFoundException(`Configuration "${key}" introuvable.`);
         }
         return updated;
     }
     async deleteByKey(key) {
         const deleted = await this.configModel.findOneAndDelete({ key }).lean().exec();
         if (!deleted) {
-            throw new common_1.NotFoundException(`Configuration "${key}" introuvable`);
+            throw new common_1.NotFoundException(`Configuration "${key}" introuvable.`);
         }
         return deleted;
     }

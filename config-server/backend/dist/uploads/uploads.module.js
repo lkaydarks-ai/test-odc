@@ -14,7 +14,7 @@ let UploadsModule = class UploadsModule {
 exports.UploadsModule = UploadsModule;
 exports.UploadsModule = UploadsModule = __decorate([
     (0, common_1.Module)({
-        controllers: [uploads_controller_1.UploadsController]
+        controllers: [uploads_controller_1.UploadsController],
     })
 ], UploadsModule);
 //# sourceMappingURL=uploads.module.js.map

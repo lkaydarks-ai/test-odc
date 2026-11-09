@@ -1,219 +1,319 @@
-# 🎓 ODC Campus Super App — Monorepo
+# 🎓 ODC Campus Super App — Guide Global du Projet
 
-> **Architecture globale, guide de démarrage et documentation technique**  
-> Ce dépôt regroupe les trois piliers de l'écosystème numérique **ODC Campus** : le serveur de configuration centralisé, la console d'administration web et l'application mobile multiplateforme.
+Bienvenue sur le référentiel principal du projet **ODC Campus Super App**. Ce monorepo fédère les trois applications fondamentales constituant l'écosystème numérique du **Campus Orange Digital Center (ODC)**.
 
 ---
 
 ## 📑 Sommaire
 
-1. [Vision & But du Projet](#1-vision--but-du-projet)
-2. [Architecture & Flux de Communication](#2-architecture--flux-de-communication)
-3. [Structure du Monorepo](#3-structure-du-monorepo)
-4. [Guide de Démarrage Rapide](#4-guide-de-démarrage-rapide)
-   * [Prérequis](#prérequis)
-   * [Brique 1 : Backend NestJS (Config Server)](#étape-1--lancer-le-backend-nestjs)
-   * [Brique 2 : Back Office React (Admin Console)](#étape-2--lancer-le-back-office-react)
-   * [Brique 3 : Application Mobile Flutter](#étape-3--lancer-lapplication-mobile-flutter)
-5. [Fonctionnalités Actuellement Disponibles](#5-fonctionnalités-actuellement-disponibles)
-6. [Dépannage & Bonnes Pratiques Réseau](#6-dépannage--bonnes-pratiques-réseau)
+1. [🎯 But du Projet](#1--but-du-projet)
+2. [🏗️ Architecture Globale & Découpage](#2-️-architecture-globale--découpage)
+3. [🔄 Circulation des Données entre les 3 Applications](#3--circulation-des-données-entre-les-3-applications)
+4. [📡 Référentiel des Routes API (Backend NestJS)](#4--référentiel-des-routes-api-backend-nestjs)
+5. [🚀 Guide de Lancement (Commandes Exactes)](#5--guide-de-lancement-commandes-exactes)
+6. [📱 Adaptation Responsive & Cibles Multiplateformes](#6--adaptation-responsive--cibles-multiplateformes)
+7. [🛠️ Dépannage & Bonnes Pratiques](#7-️-dépannage--bonnes-pratiques)
 
 ---
 
-## 1. Vision & But du Projet
+## 1. 🎯 But du Projet
 
-Le projet **ODC Campus Super App** vise à offrir aux apprenants et encadrants du Campus Orange Digital Center un point d'accès unique vers tous leurs outils et services du quotidien (formations, suivi des présences, fablab, profil, événements).
+Le projet **ODC Campus Super App** a pour vocation de fournir aux apprenants, encadrants et partenaires du Campus Orange Digital Center un **point d'entrée unique et unifié** vers l'ensemble des plateformes numériques du campus :
+* **Services pédagogiques** : Gestion des formations, suivi des présences, FabLab, soumission de projets.
+* **Vie du campus** : Événements, actualités promotionnelles, trombinoscope des apprenants et collaborateurs.
+* **Services transverses** : Documentation, profil apprenant, outils de collaboration.
 
-Pour garantir une agilité maximale, le projet repose sur une approche **Server-Driven Configuration** :
-* **Aucun redéploiement d'application mobile nécessaire** pour ajouter, modifier ou désactiver un service.
-* Les administrateurs configurent les services et les médias depuis le **Back Office**.
-* Le **Backend NestJS** stocke et distribue ces configurations.
-* L'**Application Flutter** télécharge dynamiquement cette configuration pour construire son interface et ouvrir les services dans un navigateur intégré (**WebView**).
-
----
-
-## 2. Architecture & Flux de Communication
-
-Les trois composants interagissent de manière découplée et standardisée via une API REST en JSON et du téléversement de fichiers en `multipart/form-data`.
-
-```
-                    ┌─────────────────────────────────────────┐
-                    │       Back Office Administrateur        │
-                    │         (React 19 + Vite - 5173)        │
-                    └───────────────────┬─────────────────────┘
-                                        │
-           1. PATCH /configurations/app.services (CRUD Services)
-           2. POST /uploads (Téléversement Trombinoscope)
-                                        │
-                                        ▼
-                    ┌─────────────────────────────────────────┐
-                    │          Backend Config Server          │
-                    │        (NestJS + MongoDB - 3000)        │
-                    └───────────────────┬─────────────────────┘
-                                        │
-                                        │ Stockage MongoDB
-                                        │ + Dossier physique ./uploads
-                                        │
-           1. GET /configurations/app.services (Liste des services)
-           2. GET /configurations/app.user_avatar (Photo profil)
-           3. GET /uploads/:filename (Fichiers médias)
-                                        │
-                                        ▼
-                    ┌─────────────────────────────────────────┐
-                    │        Super App Mobile Étudiant        │
-                    │         (Flutter - iOS/Android)         │
-                    └─────────────────────────────────────────┘
-```
-
-### Synthèse des rôles réseau :
-1. **Back Office -> Backend** :
-   * Modifie la configuration des services applicatifs via `PATCH http://localhost:3000/configurations/app.services`.
-   * Envoie les photos d'apprenants via `POST http://localhost:3000/uploads`.
-2. **Backend -> Persistance** :
-   * Enregistre les métadonnées dans MongoDB (collection `configs`).
-   * Enregistre les images sur le disque (`config-server/backend/uploads/`).
-3. **Flutter -> Backend** :
-   * Interroge l'API au démarrage via `GET http://localhost:3000/configurations/app.services`.
-   * Construit la grille d'accueil avec les noms, icônes et liens configurés.
-   * Récupère la photo d'avatar dynamique via `GET http://localhost:3000/configurations/app.user_avatar`.
-   * Ouvre l'URL du service dans une `WebView` native sécurisée lors du clic utilisateur.
+### Le Principe Clé : Server-Driven UI (Architecture Pilotée par le Serveur)
+Plutôt que d'intégrer en dur la liste des liens et services dans le code mobile (ce qui nécessiterait une recompilation et une redistribution sur les stores à chaque ajout de service), le projet repose sur une **configuration centralisée et dynamique** :
+1. Les administrateurs gèrent en direct la liste des services et les médias depuis le **Back Office**.
+2. Le **Serveur de Configuration (NestJS)** valide, enregistre et expose ces paramètres en temps réel via une API REST.
+3. La **Super App (Flutter)** interroge l'API à l'initialisation, génère dynamiquement l'interface (grille de raccourcis, bannières, avatars) et ouvre chaque service dans une **WebView intégrée** sécurisée.
 
 ---
 
-## 3. Structure du Monorepo
+## 2. 🏗️ Architecture Globale & Découpage
+
+Le projet s'organise en trois briques logicielles autonomes mais complémentaires :
 
 ```text
 test-odc/
+├── config-server/           # 🟢 BACKEND : Serveur de configuration & médias
+│   ├── backend/             # API NestJS + Mongoose / MongoDB (Port 3000)
+│   └── uploads/             # Stockage physique des fichiers images hébergés
 │
-├── config-server/           # Backend centralisé & micro-frontends
-│   ├── backend/             # API NestJS + Mongoose (Port 3000)
-│   └── frontend/            # Interface technique de secours (Material UI)
+├── odc_backoffice/          # 🟠 FRONTEND : Console d'administration ODC Campus
+│   ├── src/App.jsx          # Dashboard CRUD des services + Trombinoscope Drag & Drop
+│   └── src/App.css          # Design System Dark ODC (#FF7900 / #121212)
 │
-├── odc_backoffice/          # Back Office Métier ODC Campus
-│   ├── src/App.jsx          # Dashboard CRUD Services + Trombinoscope
-│   ├── src/App.css          # Design System Dark Mode ODC (#FF7900 / #121212)
-│   └── package.json         # React 19, Vite, Axios
-│
-└── odc_super_app/           # Application Mobile Client
-    ├── lib/main.dart        # Écran d'accueil, Carrousel, Navigation
-    ├── lib/services_api.dart# Client HTTP vers le Config Server
-    ├── lib/webview_page.dart# Lecteur WebView in-app
-    └── pubspec.yaml         # Dépendances Flutter (carousel_slider, webview_flutter...)
+└── odc_super_app/           # 🔵 CLIENT : Super App multiplateforme (Flutter)
+    ├── lib/main.dart        # Interface adaptative (Mobile Max It / Desktop Sidebar)
+    ├── lib/services_api.dart# Couche d'accès réseau HTTP sécurisée
+    └── lib/webview_page.dart# Lecteur WebView in-app (Natif Android/iOS & Web IFrame)
 ```
 
----
-
-## 4. Guide de Démarrage Rapide
-
-Pour lancer le projet dans son intégralité, ouvrez **trois fenêtres de terminal distinctes** depuis la racine `test-odc`.
-
-### Prérequis
-* **Node.js** (v18.x ou v20.x+) et **npm**
-* **MongoDB** démarré en local (`mongodb://127.0.0.1:27017`)
-* **Flutter SDK** (v3.19+ ou supérieure) configuré (`flutter doctor` valide)
-* Un simulateur mobile (iOS Simulator / Android Emulator) ou Google Chrome
+### Rôle de Chaque Brique :
+* **1. Backend (`config-server/backend`)** : Développé avec **NestJS 12**, **Mongoose** et **Multer**. Il assure la persistance des métadonnées dans MongoDB, gère les contraintes d'unicité, sert les images physiques et expose les endpoints REST aux deux autres applications.
+* **2. Back Office (`odc_backoffice`)** : Développé avec **React 19**, **Vite** et **Axios**. Il propose une interface d'administration professionnelle reprenant la charte graphique Orange Digital Center : formulaire CRUD complet pour `app.services`, zone de téléversement Drag & Drop pour le trombinoscope avec aperçu immédiat et copie d'URL en un clic.
+* **3. Super App (`odc_super_app`)** : Développée avec **Flutter 3.x**. Elle joue le rôle de portail (Host). Elle s'adapte automatiquement à l'écran (disposition 4 colonnes sur mobile vs Sidebar et grille 6 colonnes sur Desktop/Web) et orchestre l'accès aux microservices via des WebViews intégrées.
 
 ---
 
-### Étape 1 : Lancer le Backend NestJS
+## 3. 🔄 Circulation des Données entre les 3 Applications
 
-Le backend doit impérativement être démarré en premier pour fournir les données au Back Office et à Flutter.
+Le schéma ci-dessous détaille la manière dont les données circulent entre les trois tiers applicatifs :
+
+```
+                     ┌──────────────────────────────────────────────┐
+                     │          Back Office Administrateur          │
+                     │          (React 19 + Vite sur :5173)         │
+                     └──────────────────────┬───────────────────────┘
+                                            │
+        ① Téléversement photo               │ ② Mise à jour services
+           POST /uploads                    │    PATCH /configurations/app.services
+           (multipart/form-data)            │    (JSON : { value: { services: [...] } })
+                                            ▼
+                     ┌──────────────────────────────────────────────┐
+                     │          Backend Config Server (API)         │
+                     │           (NestJS 12 sur port 3000)          │
+                     └──────────────┬───────────────────────────────┘
+                                    │
+                                    ├── Stockage Métadonnées -> MongoDB (Collection configs)
+                                    └── Stockage Fichiers    -> Disque local (./uploads/)
+                                    │
+        ③ Lecture configuration     │ ④ Récupération avatar
+           GET /configurations/     │    GET /configurations/app.user_avatar
+           app.services             │
+                                    │ ⑤ Téléchargement des médias
+                                    │    GET /uploads/:filename
+                                    ▼
+                     ┌──────────────────────────────────────────────┐
+                     │             ODC Super App (Client)           │
+                     │      (Flutter : iOS, Android, Web/Desktop)   │
+                     └──────────────────────┬───────────────────────┘
+                                            │
+                                            │ ⑥ Clic sur un service
+                                            ▼
+                     ┌──────────────────────────────────────────────┐
+                     │        Lecteur In-App WebView (Guest)        │
+                     │  (Ouvre l'URL du service sans quitter l'app) │
+                     └──────────────────────────────────────────────┘
+```
+
+### Déroulement Pas à Pas :
+1. **Administration des Services** : L'administrateur crée, modifie ou supprime un service dans `odc_backoffice`. Le frontend émet une requête `PATCH` vers `/configurations/app.services`. Le backend valide la charge utile via son DTO et persiste le tableau d'objets dans MongoDB.
+2. **Gestion du Trombinoscope** : L'administrateur dépose une photo dans la zone Drag & Drop. Le fichier est envoyé en `POST /uploads`. Le backend génère un identifiant unique (timestamp + suffixe aléatoire), l'enregistre sur le disque et retourne l'URL publique `http://localhost:3000/uploads/<fichier>`.
+3. **Chargement de la Super App** : Au lancement de `odc_super_app`, le service Flutter `ServicesApi` interroge `GET /configurations/app.services` et `GET /configurations/app.user_avatar`.
+4. **Génération Réactive de l'Interface** : Flutter parse le JSON reçu, construit dynamiquement la grille de services avec les icônes associées et affiche l'avatar réel de l'apprenant.
+5. **Consommation In-App** : Lors d'un clic sur une tuile, la Super App instancie `WebViewPage` pour afficher le microservice distant dans un navigateur embarqué natif sans sortir de l'application.
+
+---
+
+## 4. 📡 Référentiel des Routes API (Backend NestJS)
+
+Le serveur écoute par défaut sur le port `3000` (`http://localhost:3000`).
+
+### Résumé des Endpoints
+
+| Méthode | Route | Description | Format Requis | Réponse Succès |
+| :--- | :--- | :--- | :--- | :--- |
+| **POST** | `/configurations` | Crée une configuration | `application/json` | `201 Created` |
+| **GET** | `/configurations` | Liste toutes les configurations | Aucun | `200 OK` (Array) |
+| **GET** | `/configurations/:key` | Récupère une configuration par sa clé | Aucun | `200 OK` (Objet) |
+| **PATCH** | `/configurations/:key` | Met à jour la valeur ou le statut | `application/json` | `200 OK` (Objet) |
+| **DELETE** | `/configurations/:key` | Supprime une configuration | Aucun | `200 OK` (Objet) |
+| **POST** | `/uploads` | Téléverse une image (trombinoscope/avatar) | `multipart/form-data` | `201 Created` (URL) |
+| **GET** | `/uploads/:filename` | Télécharge le fichier image statique | Aucun | `200 OK` (Binaire) |
+
+---
+
+### Détail des Requêtes & Exemples
+
+#### 1. Créer une Configuration
+* **Endpoint** : `POST http://localhost:3000/configurations`
+* **En-têtes** : `Content-Type: application/json`
+* **Corps de la requête (Body)** :
+  ```json
+  {
+    "key": "app.services",
+    "value": {
+      "services": [
+        { "name": "Tâches", "url": "https://odc-tasks.orange.com" },
+        { "name": "FabLab", "url": "https://odc-fablab.orange.com" }
+      ]
+    },
+    "status": "active"
+  }
+  ```
+* **Codes retour** : `201 Created`, `400 Bad Request` (données invalides), `409 Conflict` (la clé existe déjà).
+
+#### 2. Récupérer les Services Applicatifs (Route appelée par Flutter)
+* **Endpoint** : `GET http://localhost:3000/configurations/app.services`
+* **Réponse (200 OK)** :
+  ```json
+  {
+    "_id": "672f...",
+    "key": "app.services",
+    "value": {
+      "services": [
+        { "name": "Tâches", "url": "https://flutter.dev" },
+        { "name": "Profil", "url": "https://pub.dev" }
+      ]
+    },
+    "status": "active",
+    "createdAt": "2026-11-09T10:00:00.000Z",
+    "updatedAt": "2026-11-09T12:00:00.000Z"
+  }
+  ```
+
+#### 3. Mettre à Jour les Services (Route appelée par le Back Office)
+* **Endpoint** : `PATCH http://localhost:3000/configurations/app.services`
+* **Corps de la requête (Body)** :
+  ```json
+  {
+    "value": {
+      "services": [
+        { "name": "Tâches", "url": "https://flutter.dev" },
+        { "name": "Trombinoscope", "url": "https://odc.campus/trombi" },
+        { "name": "Présences", "url": "https://odc.campus/presence" }
+      ]
+    }
+  }
+  ```
+* **Codes retour** : `200 OK`, `404 Not Found` (clé inexistante).
+
+#### 4. Téléverser une Photo (Trombinoscope / Avatar)
+* **Endpoint** : `POST http://localhost:3000/uploads`
+* **En-têtes** : `Content-Type: multipart/form-data`
+* **Champ attendu** : `file` (binaire du fichier JPG, PNG ou WebP)
+* **Réponse (201 Created)** :
+  ```json
+  {
+    "message": "Image uploadée avec succès",
+    "filename": "1794228437811-914815874.jpg",
+    "url": "http://localhost:3000/uploads/1794228437811-914815874.jpg"
+  }
+  ```
+
+#### 5. Afficher une Image Hébergée
+* **Endpoint** : `GET http://localhost:3000/uploads/:filename`
+* **Exemple** : `http://localhost:3000/uploads/1794228437811-914815874.jpg`
+* **Réponse** : Flux binaire avec en-têtes MIME de l'image (servi directement au `CircleAvatar` ou à la balise `<img />`).
+
+---
+
+## 5. 🚀 Guide de Lancement (Commandes Exactes)
+
+Pour faire tourner l'ensemble de l'écosystème, ouvrez **trois terminaux distincts** positionnés à la racine de `test-odc`.
+
+### Prérequis Système
+* **Node.js** (version 18 ou supérieure recommandée) et **npm**.
+* **MongoDB Community** actif en local sur le port par défaut (`27017`).  
+  *Sur macOS via Homebrew :* `brew services start mongodb-community`
+* **Flutter SDK** (version 3.19+ ou supérieure) configuré (`flutter doctor` opérationnel).
+
+---
+
+### Terminal 1 : Lancer le Backend NestJS (`config-server`)
+
+Le backend doit être démarré en premier pour mettre à disposition l'API REST et le stockage.
 
 ```bash
-# Se placer dans le dossier backend
+# 1. Se rendre dans le répertoire du backend
 cd config-server/backend
 
-# Installer les dépendances
+# 2. Installer les dépendances du projet
 npm install
 
-# Démarrer le serveur en mode dev avec rechargement à chaud
+# 3. Démarrer le serveur NestJS en mode développement (rechargement à chaud)
 npm run start:dev
 ```
-* **URL de l'API** : `http://localhost:3000`
-* **Vérification** : Ouvrez `http://localhost:3000/configurations` dans votre navigateur pour confirmer que l'API répond.
+* **Adresse de l'API** : `http://localhost:3000`
+* **Contrôle rapide** : Ouvrez `http://localhost:3000/configurations` dans votre navigateur. Vous devez recevoir un tableau JSON `[]` ou contenant vos configurations existantes.
 
 ---
 
-### Étape 2 : Lancer le Back Office React
+### Terminal 2 : Lancer le Back Office React (`odc_backoffice`)
 
-Dans un second terminal, démarrez la console d'administration.
+Démarrez ensuite la console d'administration web.
 
 ```bash
-# Se placer dans le dossier du back office
+# 1. Se rendre dans le répertoire du back office
 cd odc_backoffice
 
-# Installer les dépendances
+# 2. Installer les dépendances React & Vite
 npm install
 
-# Démarrer l'application avec Vite
+# 3. Lancer le serveur de développement Vite
 npm run dev
 ```
-* **URL du Back Office** : `http://localhost:5173`
-* Le statut de connexion au Backend s'affiche en vert *(« Serveur connecté (3000) »)* dans l'en-tête.
+* **Adresse de la console** : `http://localhost:5173`
+* **Indicateur de connexion** : Un badge vert en haut à droite confirme la synchronisation avec l'API *(« Serveur connecté (3000) »)*.
 
 ---
 
-### Étape 3 : Lancer l'Application Mobile Flutter
+### Terminal 3 : Lancer la Super App Flutter (`odc_super_app`)
 
-Dans un troisième terminal, lancez la Super App sur votre cible de test.
+Lancez l'application mobile client sur le simulateur ou l'appareil de votre choix.
 
 ```bash
-# Se placer dans le dossier de l'application Flutter
+# 1. Se rendre dans le répertoire de la Super App Flutter
 cd odc_super_app
 
-# Récupérer les paquets et plugins
+# 2. Télécharger les packages Dart et plugins natifs
 flutter pub get
 
-# Lancer l'application
+# 3. Lancer l'application
 flutter run
 ```
 
-> **Astuce de sélection de cible :**
-> * Sur simulateur iOS : `flutter run -d iPhone`
-> * Sur émulateur Android : `flutter run -d emulator`
-> * Sur navigateur Web : `flutter run -d chrome`
-> * Pour lister vos cibles disponibles : `flutter devices`
+#### Cibles de Démarrage Pratiques :
+* **Navigateur Web (Google Chrome)** : `flutter run -d chrome`
+* **Simulateur iPhone (iOS)** : `flutter run -d iPhone`
+* **Émulateur Android** : `flutter run -d android`
+* **Application de bureau macOS** : `flutter run -d macos`
+* **Lister les appareils disponibles** : `flutter devices`
 
 ---
 
-## 5. Fonctionnalités Actuellement Disponibles
+## 6. 📱 Adaptation Responsive & Cibles Multiplateformes
 
-### 🛠️ 1. Gestion des Services Applicatifs (CRUD Complet)
-* **Création (Create)** : Ajout d'un service (nom + URL) avec normalisation automatique du protocole HTTPS.
-* **Lecture & Recherche (Read)** : Tableau de bord dynamique avec filtrage en temps réel par mot-clé et compteur de services actifs.
-* **Modification (Update)** : Édition instantanée via une fenêtre modale ergonomique pré-remplie (`Échap` pour annuler).
-* **Suppression (Delete)** : Dialogue de confirmation de suppression pour éviter toute manipulation involontaire.
-* **Synchronisation en direct** : Toute mise à jour est immédiatement disponible pour l'application mobile sans compilation.
+La Super App Flutter s'adapte automatiquement à son environnement d'affichage via un seuil responsive dynamique (**Breakpoint à 800px**) :
 
-### 📸 2. Module Trombinoscope & Gestion des Médias
-* **Zone d'upload Drag & Drop** : Dépôt direct de photos (JPG, PNG, WebP) avec prévisualisation locale et contrôle du poids du fichier.
-* **Hébergement Backend** : Stockage persistant sur le serveur NestJS avec génération d'URL unique.
-* **Bouton « Copier l'URL »** : Copie dans le presse-papier en un clic avec feedback visuel vert pour injecter l'URL dans Flutter.
-* **Persistance de session** : Historique des uploads sauvegardé dans le stockage local du navigateur.
+```
+             ┌─────────────────────────────────────────────────────────┐
+             │            LayoutBuilder (Breakpoint : 800px)           │
+             └────────────────────────────┬────────────────────────────┘
+                                          │
+                  Largeur < 800px         │         Largeur >= 800px
+             ┌────────────────────────────┴────────────────────────────┐
+             ▼                                                         ▼
+    ┌─────────────────────────────┐           ┌─────────────────────────────────────────┐
+    │     Affichage Mobile        │           │        Affichage Desktop / Web          │
+    │  - Header compact logo ODC  │           │  - Sidebar latérale fixe (250px)        │
+    │  - Carrousel ratio ~2.05    │           │  - Header de bienvenue étendu           │
+    │  - Grille à 4 colonnes      │           │  - Carrousel centré (maxWidth 850px)    │
+    │  - BottomNavigationBar      │           │  - Grille fluide à 6 colonnes           │
+    └─────────────────────────────┘           └─────────────────────────────────────────┘
+```
 
-### 🎠 3. Carrousel d'Accueil & Actualités
-* **Bannière animée** : Défilement automatique des visuels de promotion du campus avec transitions douces.
-* **Indicateur de position** : Points de pagination interactifs reflétant la diapositive en cours de visionnage.
-
-### 🌐 4. Lecteur WebView In-App
-* **Navigation intégrée** : Au clic sur n'importe quel service depuis Flutter, la page cible s'ouvre dans un navigateur intégré sans sortir de l'application.
-* **Barre d'outils dédiée** : Header reprenant le nom du service, bouton de fermeture et indicateur de chargement.
-* **Support hybride** : Implémentation multiplateforme prenant en charge le Web (`iframe`) et le Mobile natif (`webview_flutter`).
+* **Sur Mobile (< 800px)** : Ergonomie pensée pour l'usage tactile au pouce avec disposition compacte à 4 colonnes et barre d'onglets inférieure.
+* **Sur Desktop & Tablettes (>= 800px)** : Disposition type Dashboard moderne avec barre de navigation latérale fixe, affichage de l'état « En ligne » de l'apprenant et grille étendue à 6 colonnes.
+* **Carrousel Dynamique** : Le widget `_BanniereCarrousel` calcule son ratio d'affichage (`AspectRatio`) automatiquement à partir de la largeur réelle disponible, ce qui garantit que les bannières au format 1456x720 ne sont jamais coupées ni étirées, quel que soit le modèle d'appareil.
 
 ---
 
-## 6. Dépannage & Bonnes Pratiques Réseau
+## 7. 🛠️ Dépannage & Bonnes Pratiques
 
-| Problème rencontré | Cause probable | Solution |
+| Problème / Symptôme | Cause Fréquente | Solution Recommandée |
 | :--- | :--- | :--- |
-| **`Connection refused` sur Flutter Android** | Sur émulateur Android, `localhost` pointe vers l'émulateur lui-même et non sur votre Mac. | Remplacez `http://localhost:3000` par `http://10.0.2.2:3000` dans `lib/services_api.dart`. *(Sur simulateur iOS, `localhost` fonctionne nativement).* |
-| **Pastille API rouge dans le Back Office** | Le backend NestJS n'est pas démarré ou le port 3000 est indisponible. | Vérifiez le terminal `config-server/backend` et assurez-vous que MongoDB est bien lancé (`brew services start mongodb-community`). |
-| **Images introuvables / 404** | Le dossier `uploads` côté backend est manquant ou vide. | Uploadez une nouvelle image via le Back Office ; le backend génère automatiquement le fichier dans `config-server/backend/uploads/`. |
+| **`Connection refused` sur émulateur Android** | L'émulateur Android considère `localhost` comme sa propre boucle locale et non celle de votre ordinateur hôte. | Lancez Flutter en surchargeant l'URL :<br>`flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000`<br>*(Sur simulateur iOS et Web, `localhost` fonctionne directement).* |
+| **Voyant API rouge dans le Back Office** | Le backend NestJS est éteint ou MongoDB n'est pas actif. | Vérifiez que MongoDB tourne (`brew services list`) puis relancez `npm run start:dev` dans `config-server/backend`. |
+| **Erreur 404 lors du chargement des services** | La clé `app.services` n'est pas encore initialisée dans MongoDB. | Ajoutez votre premier service depuis le Back Office (`http://localhost:5173`) : la configuration sera créée immédiatement. |
+| **Images 404 dans l'avatar Flutter** | Le dossier `uploads` du backend a été vidé. | Uploadez une nouvelle image dans le Trombinoscope du Back Office, copiez son URL et assignez-la. |
 
 ---
 
-## 👥 Contacts & Contribution
+## 👥 Équipe & Gouvernance
 
-Projet maintenu par l'équipe **Orange Digital Center (ODC) Campus**.  
-Pour toute question d'architecture ou suggestion de fonctionnalité, contactez le Chef de Projet Technique de la promotion.
-
+Projet développé et maintenu dans le cadre du programme **Orange Digital Center (ODC) Campus**.  
+Pour toute question d'architecture ou de gouvernance technique, référez-vous au document de synthèse destiné au Lead Tech (`SYNTHESE_LEAD_TECH.md`).

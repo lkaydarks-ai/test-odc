@@ -17,7 +17,7 @@ exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            mongoose_1.MongooseModule.forRoot('mongodb://127.0.0.1:27017/config-server'),
+            mongoose_1.MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/config-server'),
             configurations_module_1.ConfigurationsModule,
             uploads_module_1.UploadsModule,
         ],

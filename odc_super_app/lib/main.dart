@@ -101,9 +101,7 @@ class _MainNavigationState extends State<MainNavigation> {
                   },
                 ),
                 // 2. Zone de contenu principal à droite
-                Expanded(
-                  child: pages[_currentIndex],
-                ),
+                Expanded(child: pages[_currentIndex]),
               ],
             ),
             // La BottomNavigationBar est complètement supprimée sur Desktop
@@ -171,9 +169,20 @@ class _DesktopSidebarState extends State<_DesktopSidebar> {
   }
 
   Future<void> _chargerAvatar() async {
-    final avatar = await ServicesApi().fetchAvatarUrl();
-    if (mounted) {
-      setState(() => _avatarUrl = avatar);
+    try {
+      final avatar = await ServicesApi().fetchAvatarUrl();
+      if (mounted) {
+        setState(() {
+          _avatarUrl = (avatar != null && avatar.trim().isNotEmpty)
+              ? avatar.trim()
+              : null;
+        });
+      }
+    } catch (_) {
+      // Sécurité absolue : l'absence d'avatar ne doit jamais faire planter l'application
+      if (mounted) {
+        setState(() => _avatarUrl = null);
+      }
     }
   }
 
@@ -225,27 +234,33 @@ class _DesktopSidebarState extends State<_DesktopSidebar> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ODC CAMPUS',
-                        style: GoogleFonts.montserrat(
-                          color: AppColors.blanc,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ODC CAMPUS',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.blanc,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Tableau de bord',
-                        style: GoogleFonts.montserrat(
-                          color: AppColors.orange,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                        Text(
+                          'Tableau de bord',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.orange,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -301,10 +316,15 @@ class _DesktopSidebarState extends State<_DesktopSidebar> {
                     CircleAvatar(
                       radius: 20,
                       backgroundColor: AppColors.surface,
-                      backgroundImage: _avatarUrl != null
-                          ? NetworkImage(_avatarUrl!)
+                      backgroundImage: (_avatarUrl != null && _avatarUrl!.trim().isNotEmpty)
+                          ? NetworkImage(_avatarUrl!.trim())
                           : null,
-                      child: _avatarUrl == null
+                      onBackgroundImageError: (_avatarUrl != null && _avatarUrl!.trim().isNotEmpty)
+                          ? (error, stackTrace) {
+                              if (mounted) setState(() => _avatarUrl = null);
+                            }
+                          : null,
+                      child: (_avatarUrl == null || _avatarUrl!.trim().isEmpty)
                           ? const Icon(
                               Icons.person_rounded,
                               color: AppColors.blanc,
@@ -492,7 +512,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _rechercheController = TextEditingController();
   String _recherche = '';
-  late final Future<List<ServiceModel>> _servicesFuture;
+  late Future<List<ServiceModel>> _servicesFuture;
 
   @override
   void initState() {
@@ -585,10 +605,17 @@ class _HomePageState extends State<HomePage> {
           return const SizedBox(
             height: 160,
             child: Center(
-              child: CircularProgressIndicator(
-                color: AppColors.orange,
-              ),
+              child: CircularProgressIndicator(color: AppColors.orange),
             ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return _ErreurChargementServices(
+            message: snapshot.error.toString(),
+            onRetry: () {
+              setState(() => _servicesFuture = _chargerServices());
+            },
           );
         }
 
@@ -643,7 +670,10 @@ class _HomePageState extends State<HomePage> {
                   // Largeur maximale fixée à 1200px pour éviter tout étirement disgracieux
                   constraints: const BoxConstraints(maxWidth: 1200),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 36,
+                      vertical: 24,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -664,12 +694,12 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Carrousel avec hauteur fixe (200px) et largeur maîtrisée (ne prend pas toute la largeur)
+                        // Carrousel adaptatif centré avec largeur maximale maîtrisée (évite l'étirement sur écran large)
                         Align(
                           alignment: Alignment.center,
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 850),
-                            child: const _BanniereCarrousel(height: 200),
+                            child: const BanniereCarrousel(),
                           ),
                         ),
                         const SizedBox(height: 28),
@@ -719,8 +749,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Carrousel mobile pleine largeur (hauteur standard 160px)
-                    const _BanniereCarrousel(height: 160),
+                    // Carrousel mobile adaptatif (calcule dynamiquement son ratio pour épouser l'écran)
+                    const BanniereCarrousel(),
                     const SizedBox(height: 22),
 
                     Align(
@@ -771,12 +801,21 @@ class _EnTeteState extends State<_EnTete> {
 
   /// Charge l'adresse de la photo dès l'ouverture de l'écran.
   Future<void> _chargerAvatar() async {
-    final avatarUrl = await ServicesApi().fetchAvatarUrl();
-    if (!mounted) return;
+    try {
+      final avatarUrl = await ServicesApi().fetchAvatarUrl();
+      if (!mounted) return;
 
-    setState(() {
-      _avatarUrl = avatarUrl;
-    });
+      setState(() {
+        _avatarUrl = (avatarUrl != null && avatarUrl.trim().isNotEmpty)
+            ? avatarUrl.trim()
+            : null;
+      });
+    } catch (_) {
+      // Sécurité absolue : l'absence d'avatar ne doit jamais faire planter l'application
+      if (mounted) {
+        setState(() => _avatarUrl = null);
+      }
+    }
   }
 
   @override
@@ -787,27 +826,30 @@ class _EnTeteState extends State<_EnTete> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Bienvenue sur votre espace ODC Campus',
-                style: GoogleFonts.montserrat(
-                  color: AppColors.blanc,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bienvenue sur votre espace ODC Campus',
+                  style: GoogleFonts.montserrat(
+                    color: AppColors.blanc,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Formations, projets et services disponibles en temps réel',
-                style: GoogleFonts.montserrat(
-                  color: Colors.grey.shade400,
-                  fontSize: 12,
+                const SizedBox(height: 4),
+                Text(
+                  'Formations, projets et services disponibles en temps réel',
+                  style: GoogleFonts.montserrat(
+                    color: Colors.grey.shade400,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
@@ -817,11 +859,19 @@ class _EnTeteState extends State<_EnTete> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.notifications_none_rounded, color: AppColors.orange, size: 18),
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  color: AppColors.orange,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Notifications actives',
-                  style: GoogleFonts.montserrat(color: AppColors.blanc, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.montserrat(
+                    color: AppColors.blanc,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -830,7 +880,9 @@ class _EnTeteState extends State<_EnTete> {
       );
     }
 
-    // Version Mobile : Logo ODC, recherche, cloche et CircleAvatar
+    // Version Mobile : Logo ODC, notifications et CircleAvatar
+    // Remarque : L'icône loupe de recherche a été retirée car une barre de recherche dédiée
+    // est déjà présente directement sur l'écran d'accueil.
     return Row(
       children: [
         Container(
@@ -851,17 +903,20 @@ class _EnTeteState extends State<_EnTete> {
           ),
         ),
         const Spacer(),
-        const Icon(Icons.search_rounded, color: AppColors.blanc),
-        const SizedBox(width: 16),
         const Icon(Icons.notifications_none_rounded, color: AppColors.blanc),
         const SizedBox(width: 16),
         CircleAvatar(
           radius: 18,
           backgroundColor: AppColors.surface,
-          backgroundImage: _avatarUrl == null
-              ? null
-              : NetworkImage(_avatarUrl!),
-          child: _avatarUrl == null
+          backgroundImage: (_avatarUrl != null && _avatarUrl!.trim().isNotEmpty)
+              ? NetworkImage(_avatarUrl!.trim())
+              : null,
+          onBackgroundImageError: (_avatarUrl != null && _avatarUrl!.trim().isNotEmpty)
+              ? (error, stackTrace) {
+                  if (mounted) setState(() => _avatarUrl = null);
+                }
+              : null,
+          child: (_avatarUrl == null || _avatarUrl!.trim().isEmpty)
               ? const Icon(
                   Icons.person_rounded,
                   color: AppColors.blanc,
@@ -874,16 +929,29 @@ class _EnTeteState extends State<_EnTete> {
   }
 }
 
-/// Affiche une bannière qui défile automatiquement et indique la page courante.
-class _BanniereCarrousel extends StatefulWidget {
-  final double height;
-  const _BanniereCarrousel({super.key, this.height = 160});
+/// Affiche un carrousel d'images promotionnelles adaptatif avec défilement automatique.
+/// Conçu pour s'ajuster harmonieusement à toutes les tailles d'écrans (iPhone, Android, Web/Desktop)
+/// en s'appuyant sur un AspectRatio réactif et des contraintes de largeur.
+class BanniereCarrousel extends StatefulWidget {
+  /// Ratio d'aspect optionnel (largeur / hauteur). Si non spécifié, le ratio est calculé dynamiquement
+  /// selon la largeur de l'écran pour respecter les proportions des visuels (1456x720, soit ~2.02).
+  final double? aspectRatio;
+
+  /// Hauteur fixe optionnelle pour les contextes nécessitant une taille imposée.
+  final double? height;
+
+  const BanniereCarrousel({
+    super.key,
+    this.aspectRatio,
+    this.height,
+  });
 
   @override
-  State<_BanniereCarrousel> createState() => _BanniereCarrouselState();
+  State<BanniereCarrousel> createState() => _BanniereCarrouselState();
 }
 
-class _BanniereCarrouselState extends State<_BanniereCarrousel> {
+class _BanniereCarrouselState extends State<BanniereCarrousel> {
+  // Liste ordonnée des visuels de promotion du campus stockés dans les assets
   static const List<String> _images = [
     'assets/images/banner_student.jpeg',
     'assets/images/banner_student_3.jpeg',
@@ -896,51 +964,72 @@ class _BanniereCarrouselState extends State<_BanniereCarrousel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: CarouselSlider(
-            options: CarouselOptions(
-              height: widget.height,
-              viewportFraction: 1,
-              autoPlay: true,
-              // Le slider passe automatiquement à l'image suivante toutes les 3 secondes.
-              autoPlayInterval: const Duration(seconds: 3),
-              onPageChanged: (index, reason) {
-                setState(() => _indexCourant = index);
-              },
-            ),
-            items: _images.map((chemin) {
-              return SizedBox(
-                width: double.infinity,
-                child: Image.asset(chemin, fit: BoxFit.cover),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 10),
-        // Ces points représentent les images disponibles et mettent la courante en évidence.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_images.length, (index) {
-            final estSelectionne = index == _indexCourant;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: estSelectionne ? 10 : 7,
-              height: estSelectionne ? 10 : 7,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: estSelectionne
-                    ? AppColors.orange
-                    : AppColors.blanc.withValues(alpha: 0.45),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final largeurDisponible = constraints.maxWidth;
+
+        // Calcul dynamique du ratio d'aspect selon le facteur de forme :
+        // - Sur mobile (largeur < 600px) : ratio de 2.05 pour calquer le format natif 1456x720 sans rognage
+        // - Sur tablette / desktop (largeur >= 600px) : ratio étendu à 2.6 pour optimiser l'espace vertical
+        final double ratioDynamique = widget.aspectRatio ??
+            (largeurDisponible >= 600 ? 2.6 : 2.05);
+
+        final double? hauteurImposee = widget.height;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: CarouselSlider(
+                options: CarouselOptions(
+                  height: hauteurImposee,
+                  aspectRatio: hauteurImposee == null ? ratioDynamique : 16 / 9,
+                  viewportFraction: 1.0,
+                  autoPlay: true,
+                  // Défilement automatique toutes les 3 secondes avec transition douce
+                  autoPlayInterval: const Duration(seconds: 3),
+                  autoPlayAnimationDuration: const Duration(milliseconds: 600),
+                  autoPlayCurve: Curves.easeInOut,
+                  onPageChanged: (index, reason) {
+                    setState(() => _indexCourant = index);
+                  },
+                ),
+                items: _images.map((chemin) {
+                  return SizedBox(
+                    width: double.infinity,
+                    child: Image.asset(
+                      chemin,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                    ),
+                  );
+                }).toList(),
               ),
-            );
-          }),
-        ),
-      ],
+            ),
+            const SizedBox(height: 10),
+            // Indicateurs de pagination (points) mettant en évidence la diapositive active
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_images.length, (index) {
+                final estSelectionne = index == _indexCourant;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: estSelectionne ? 10 : 7,
+                  height: estSelectionne ? 10 : 7,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: estSelectionne
+                        ? AppColors.orange
+                        : AppColors.blanc.withValues(alpha: 0.45),
+                  ),
+                );
+              }),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1105,6 +1194,54 @@ class _ServiceCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Explique l'échec de chargement et permet de relancer l'appel au serveur.
+class _ErreurChargementServices extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErreurChargementServices({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 190,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 38, color: Colors.orange),
+            const SizedBox(height: 8),
+            Text(
+              'Impossible de charger les services. Vérifiez que le backend est démarré.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.montserrat(
+                color: Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.montserrat(color: Colors.grey, fontSize: 10),
+            ),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Réessayer'),
+            ),
+          ],
         ),
       ),
     );

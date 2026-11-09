@@ -19,13 +19,16 @@ const multer_1 = require("multer");
 const path_1 = require("path");
 let UploadsController = class UploadsController {
     uploadFile(file) {
+        const port = process.env.PORT || '3000';
         return {
             message: 'Image uploadée avec succès',
-            url: `http://localhost:3000/uploads/${file.filename}`,
+            filename: file.filename,
+            url: `http://localhost:${port}/uploads/${file.filename}`,
         };
     }
     getFile(filename, res) {
-        res.sendFile((0, path_1.join)(process.cwd(), 'uploads', filename));
+        const cheminFichier = (0, path_1.join)(process.cwd(), 'uploads', filename);
+        res.sendFile(cheminFichier);
     }
 };
 exports.UploadsController = UploadsController;
@@ -36,8 +39,8 @@ __decorate([
             destination: './uploads',
             filename: (req, file, callback) => {
                 const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-                const ext = (0, path_1.extname)(file.originalname);
-                callback(null, `${uniqueSuffix}${ext}`);
+                const extension = (0, path_1.extname)(file.originalname);
+                callback(null, `${uniqueSuffix}${extension}`);
             },
         }),
     })),

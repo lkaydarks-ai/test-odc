@@ -14,8 +14,9 @@ async function bootstrap() {
         forbidNonWhitelisted: true,
         transform: true,
     }));
-    await app.listen(3000);
-    console.log('API prête sur http://localhost:3000');
+    const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+    await app.listen(port);
+    console.log(`Serveur ODC Config démarré avec succès sur http://localhost:${port}`);
 }
-bootstrap();
+void bootstrap();
 //# sourceMappingURL=main.js.map
